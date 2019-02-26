@@ -1,9 +1,9 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import logo from './logo.svg';
-import './App.css';
-import { fetchNBAScores } from './actions/scoreboardActions';
+import '../style/App.css';
+import { fetchNBAScores } from '../actions/scoreboardActions';
 import { connect } from 'react-redux';
+import Scoreboard from './Scoreboard/Scoreboard';
 
 class App extends Component {
 
@@ -14,39 +14,29 @@ class App extends Component {
       scores: []
     };
 
-    this.getScores = this.getScores.bind(this);
+    this.getScoreboards = this.getScoreboards.bind(this);
   }
 
   async componentDidMount() {
     await this.props.fetchNBAScores();
   }
 
-  getScores() {
-    if (this.props.scores.length === 0) {
-      return "";
+  getScoreboards() {
+    const scores = this.props.scores;
+
+    if (scores.length > 0) {
+      return scores.map(score => (
+        <Scoreboard league="NBA" stats={score} />
+      ));
     } else {
-      return this.props.scores.games[0].hTeam.score;
+      return '';
     }
   }
 
   render() {
-    const scores = this.getScores();
     return (
       <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            {scores}
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-        </header>
+        {this.getScoreboards()}
       </div>
     );
   }
@@ -61,7 +51,7 @@ App.defaultProps = {
 };
 
 const mapStateToProps = state => ({
-  scores: state.scores.scores
+  scores: state.scores.games
 });
 
 const mapDispatchToProps = dispatch => {
