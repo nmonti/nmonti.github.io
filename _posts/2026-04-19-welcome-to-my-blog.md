@@ -19,6 +19,4 @@ Jekyll is a static site generator — it takes Markdown files and transforms the
 
 ## What to expect
 
-I'll be writing about software engineering, tools I use, and projects I'm working on. Posts will be practical and hands-on — expect code snippets, real examples, and honest takes.
-
-Stay tuned for more!
+Testing
