@@ -1,0 +1,25 @@
+title: My Blog
+description: A sample Jekyll blog
+author: Nick Monti
+email: nickmax123@gmail.com
+baseurl: ""
+url: "https://nmonti.github.io"
+
+theme: minima
+
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+
+minima:
+  skin: classic
+  social_links:
+    - { platform: github, user_url: "https://github.com/nmonti" }
+
+permalink: /blog/:year/:month/:day/:title/
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
