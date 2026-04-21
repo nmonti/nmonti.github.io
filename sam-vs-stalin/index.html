@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sam vs. Stalin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+      touch-action: none;
+    }
+    #game-container {
+      width: 100%; height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div id="game-state"
+       data-scene=""
+       data-sam-hp="100"
+       data-stalin-hp="100"
+       style="display:none"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <script>
+  'use strict';
+
+  const W = 800, H = 500;
+  const SAM_SPEED = 200;
+  const STALIN_SPEED = 250;
+  const FLAG_SPEED = 500;
+  const DAMAGE = 25;
+  const MAX_HP = 100;
+  const ASSET_BASE = 'https://raw.githubusercontent.com/nmonti/Sam-vs-Stalin/master';
+
+  function setState(key, val) {
+    const el = document.getElementById('game-state');
+    if (el) el.setAttribute('data-' + key, String(val));
+  }
+
+  // ===================== MENU =====================
+  class MenuScene extends Phaser.Scene {
+    constructor() { super({ key: 'MenuScene' }); }
+
+    preload() {
+      this.load.image('menu-sam', ASSET_BASE + '/sam.gif');
+      this.load.image('menu-stalin', ASSET_BASE + '/Stalin.gif');
+      this.load.image('menu-commies', ASSET_BASE + '/commies.jpg');
+    }
+
+    create() {
+      setState('scene', 'MenuScene');
+      setState('sam-hp', 100);
+      setState('stalin-hp', 100);
+
+      // Background
+      this.add.rectangle(W / 2, H / 2, W, H, 0x1a1a2e);
+
+      // Top banner image
+      if (this.textures.exists('menu-commies')) {
+        this.add.image(W / 2, 65, 'menu-commies').setDisplaySize(160, 80);
+      } else {
+        this.add.rectangle(W / 2, 65, 160, 80, 0x333333);
+      }
+
+      // Title
+      this.add.text(W / 2, 148, 'SAM vs. STALIN', {
+        fontFamily: 'Impact, Arial Black, sans-serif',
+        fontSize: '44px',
+        color: '#FFD700',
+        stroke: '#8B0000',
+        strokeThickness: 5
+      }).setOrigin(0.5);
+
+      // Sam sprite
+      if (this.textures.exists('menu-sam')) {
+        this.add.image(125, 255, 'menu-sam').setDisplaySize(85, 105);
+      } else {
+        this.add.rectangle(125, 255, 85, 105, 0x0044cc);
+        this.add.text(125, 255, 'SAM', { fontSize: '14px', color: '#fff' }).setOrigin(0.5);
+      }
+
+      // Stalin sprite
+      if (this.textures.exists('menu-stalin')) {
+        this.add.image(675, 255, 'menu-stalin').setDisplaySize(85, 105);
+      } else {
+        this.add.rectangle(675, 255, 85, 105, 0xcc0000);
+        this.add.text(675, 255, 'STALIN', { fontSize: '14px', color: '#fff' }).setOrigin(0.5);
+      }
+
+      // VS text
+      this.add.text(W / 2, 255, 'VS.', {
+        fontFamily: 'Impact, Arial Black, sans-serif',
+        fontSize: '32px',
+        color: '#ffffff'
+      }).setOrigin(0.5);
+
+      // Instructions box
+      this.add.rectangle(W / 2, 340, 480, 82, 0x000000, 0.65);
+      [
+        '1. ARROW KEYS to move Uncle Sam — SPACE to shoot the American flag',
+        '2. Hit Stalin 4 times to infect him with democracy!',
+        '3. Stalin shoots back — dodge or 4 hits and America is doomed!'
+      ].forEach((line, i) => {
+        this.add.text(W / 2, 312 + i * 22, line, {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '12px',
+          color: '#dddddd'
+        }).setOrigin(0.5);
+      });
+
+      // --- Buttons ---
+      const makeBtn = (x, y, label, color, scene, mode) => {
+        const btn = this.add.rectangle(x, y, 200, 46, color)
+          .setInteractive({ useHandCursor: true });
+        this.add.text(x, y, label, {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '15px',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        btn.on('pointerover', () => btn.setFillStyle(color + 0x222222));
+        btn.on('pointerout', () => btn.setFillStyle(color));
+        btn.on('pointerdown', () => {
+          setState('scene', 'GameScene');
+          this.scene.start(scene, { mode });
+        });
+        return btn;
+      };
+
+      makeBtn(210, 443, 'SINGLE PLAYER', 0x0044aa, 'GameScene', '1player');
+      makeBtn(590, 443, 'TWO PLAYER', 0x880000, 'GameScene', '2player');
+
+      this.add.text(W / 2, 477, '2P: Sam = WASD + CapsLock  |  Stalin = Arrows + Numpad0', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '10px',
+        color: '#666666'
+      }).setOrigin(0.5);
+    }
+  }
+
+  // ===================== GAME =====================
+  class GameScene extends Phaser.Scene {
+    constructor() { super({ key: 'GameScene' }); }
+
+    preload() {
+      this.load.image('bg', ASSET_BASE + '/Alaska.jpg');
+      this.load.image('sam', ASSET_BASE + '/sam.gif');
+      this.load.image('stalin', ASSET_BASE + '/Stalin.gif');
+      this.load.image('usa', ASSET_BASE + '/USA.gif');
+      this.load.image('ussr', ASSET_BASE + '/USSR.gif');
+    }
+
+    create(data) {
+      this.mode = (data && data.mode) || '1player';
+      this.samHP = MAX_HP;
+      this.stalinHP = MAX_HP;
+      this.gameOver = false;
+      this.usaActive = false;
+      this.ussrActive = false;
+      this.stalinVelX = 0;
+      this.stalinVelY = 0;
+
+      setState('scene', 'GameScene');
+      setState('sam-hp', this.samHP);
+      setState('stalin-hp', this.stalinHP);
+
+      // --- Background ---
+      if (this.textures.exists('bg')) {
+        this.add.image(W / 2, H / 2, 'bg').setDisplaySize(W, H);
+      } else {
+        this.add.rectangle(W / 2, H / 2, W, H, 0x2d5a1b);
+      }
+
+      // Divider line
+      this.add.rectangle(W / 2, H / 2 + 18, 2, H - 36, 0xffffff, 0.25);
+
+      // HUD background
+      this.add.rectangle(W / 2, 18, W, 36, 0x000000, 0.80);
+
+      // HP bar backgrounds
+      this.add.rectangle(12, 11, 178, 14, 0x444444).setOrigin(0);
+      this.add.rectangle(W - 190, 11, 178, 14, 0x444444).setOrigin(0);
+
+      // HP bars
+      this.samBar = this.add.rectangle(12, 11, 178, 14, 0x00bb00).setOrigin(0).setDepth(1);
+      this.stalinBar = this.add.rectangle(W - 190, 11, 178, 14, 0xcc0000).setOrigin(0).setDepth(1);
+
+      // HP labels
+      this.samHPText = this.add.text(12, 1, 'Uncle Sam: 100 HP', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '12px',
+        color: '#ffffff'
+      }).setDepth(2);
+
+      this.stalinHPText = this.add.text(W - 12, 1, 'Stalin: 100 HP', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '12px',
+        color: '#ffffff'
+      }).setOrigin(1, 0).setDepth(2);
+
+      // --- Characters ---
+      if (this.textures.exists('sam')) {
+        this.sam = this.add.image(110, H / 2 + 18, 'sam').setDisplaySize(78, 98);
+      } else {
+        this.sam = this.add.rectangle(110, H / 2 + 18, 78, 98, 0x003399);
+        this.add.text(110, H / 2 + 18, 'SAM', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      }
+
+      if (this.textures.exists('stalin')) {
+        this.stalin = this.add.image(W - 110, H / 2 + 18, 'stalin').setDisplaySize(78, 98);
+      } else {
+        this.stalin = this.add.rectangle(W - 110, H / 2 + 18, 78, 98, 0x880000);
+        this.add.text(W - 110, H / 2 + 18, 'STALIN', { fontSize: '12px', color: '#fff' }).setOrigin(0.5);
+      }
+
+      // --- Projectiles ---
+      if (this.textures.exists('usa')) {
+        this.usaFlag = this.add.image(-200, -200, 'usa').setDisplaySize(38, 28).setVisible(false);
+      } else {
+        this.usaFlag = this.add.rectangle(-200, -200, 38, 28, 0x0000ff).setVisible(false);
+      }
+
+      if (this.textures.exists('ussr')) {
+        this.ussrFlag = this.add.image(-200, -200, 'ussr').setDisplaySize(38, 28).setVisible(false);
+      } else {
+        this.ussrFlag = this.add.rectangle(-200, -200, 38, 28, 0xff0000).setVisible(false);
+      }
+
+      // --- Keyboard ---
+      this.cursors = this.input.keyboard.createCursorKeys();
+      this.wasd = this.input.keyboard.addKeys({
+        up: Phaser.Input.Keyboard.KeyCodes.W,
+        down: Phaser.Input.Keyboard.KeyCodes.S,
+        left: Phaser.Input.Keyboard.KeyCodes.A,
+        right: Phaser.Input.Keyboard.KeyCodes.D
+      });
+      this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+      this.capsKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.CAPS_LOCK);
+      this.numpad0 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_ZERO);
+
+      // --- AI timers (1-player) ---
+      this.aiMoveTimer = null;
+      this.aiShootTimer = null;
+      if (this.mode === '1player') {
+        this.aiMoveTimer = this.time.addEvent({
+          delay: 250,
+          callback: this.aiPickDir,
+          callbackScope: this,
+          loop: true
+        });
+        this.aiShootTimer = this.time.addEvent({
+          delay: 500,
+          callback: this.doStalinShoot,
+          callbackScope: this,
+          loop: true
+        });
+      }
+
+      // --- Touch state ---
+      this.touch = {
+        samUp: false, samDown: false, samLeft: false, samRight: false,
+        stalUp: false, stalDown: false, stalLeft: false, stalRight: false
+      };
+      this.buildTouchControls();
+    }
+
+    buildTouchControls() {
+      const cy = H - 52;
+      const alpha = 0.65;
+
+      const btn = (x, y, label, onDown, onUp) => {
+        const c = this.add.circle(x, y, 24, 0x222222, alpha)
+          .setInteractive({ useHandCursor: true }).setDepth(20);
+        this.add.text(x, y, label, { fontSize: '15px', color: '#ffffff' })
+          .setOrigin(0.5).setDepth(21);
+        c.on('pointerdown', onDown);
+        c.on('pointerup', onUp);
+        c.on('pointerout', onUp);
+        return c;
+      };
+
+      const fireBtn = (x, y, label, color, fn) => {
+        const c = this.add.circle(x, y, 26, color, 0.75)
+          .setInteractive({ useHandCursor: true }).setDepth(20);
+        this.add.text(x, y, label, {
+          fontSize: '9px', color: '#ffffff', fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(21);
+        c.on('pointerdown', fn);
+        return c;
+      };
+
+      // Sam d-pad
+      btn(47, cy - 28, '▲', () => { this.touch.samUp = true; }, () => { this.touch.samUp = false; });
+      btn(47, cy + 28, '▼', () => { this.touch.samDown = true; }, () => { this.touch.samDown = false; });
+      btn(19, cy, '◀', () => { this.touch.samLeft = true; }, () => { this.touch.samLeft = false; });
+      btn(75, cy, '▶', () => { this.touch.samRight = true; }, () => { this.touch.samRight = false; });
+      fireBtn(130, cy, 'FIRE', 0x003399, () => { this.doSamShoot(); });
+
+      // Stalin controls only in 2-player
+      if (this.mode === '2player') {
+        btn(W - 47, cy - 28, '▲', () => { this.touch.stalUp = true; }, () => { this.touch.stalUp = false; });
+        btn(W - 47, cy + 28, '▼', () => { this.touch.stalDown = true; }, () => { this.touch.stalDown = false; });
+        btn(W - 75, cy, '◀', () => { this.touch.stalLeft = true; }, () => { this.touch.stalLeft = false; });
+        btn(W - 19, cy, '▶', () => { this.touch.stalRight = true; }, () => { this.touch.stalRight = false; });
+        fireBtn(W - 130, cy, 'FIRE', 0x880000, () => { this.doStalinShoot(); });
+      }
+    }
+
+    aiPickDir() {
+      if (this.gameOver) return;
+      const d = Phaser.Math.Between(1, 4);
+      const s = STALIN_SPEED;
+      if (d === 1) { this.stalinVelX = 0; this.stalinVelY = -s; }
+      else if (d === 2) { this.stalinVelX = 0; this.stalinVelY = s; }
+      else if (d === 3) { this.stalinVelX = -s; this.stalinVelY = 0; }
+      else { this.stalinVelX = s; this.stalinVelY = 0; }
+    }
+
+    doSamShoot() {
+      if (this.usaActive || this.gameOver) return;
+      const sw = (this.sam.displayWidth || this.sam.width) / 2;
+      this.usaFlag.setPosition(this.sam.x + sw + 5, this.sam.y);
+      this.usaFlag.setVisible(true);
+      this.usaActive = true;
+    }
+
+    doStalinShoot() {
+      if (this.ussrActive || this.gameOver) return;
+      const tw = (this.stalin.displayWidth || this.stalin.width) / 2;
+      this.ussrFlag.setPosition(this.stalin.x - tw - 5, this.stalin.y);
+      this.ussrFlag.setVisible(true);
+      this.ussrActive = true;
+    }
+
+    refreshHUD() {
+      this.samHPText.setText('Uncle Sam: ' + this.samHP + ' HP');
+      this.stalinHPText.setText('Stalin: ' + this.stalinHP + ' HP');
+      this.samBar.setDisplaySize(Math.max(0, (this.samHP / MAX_HP) * 178), 14);
+      this.stalinBar.setDisplaySize(Math.max(0, (this.stalinHP / MAX_HP) * 178), 14);
+      setState('sam-hp', this.samHP);
+      setState('stalin-hp', this.stalinHP);
+    }
+
+    stopTimers() {
+      if (this.aiMoveTimer) { this.aiMoveTimer.remove(false); this.aiMoveTimer = null; }
+      if (this.aiShootTimer) { this.aiShootTimer.remove(false); this.aiShootTimer = null; }
+    }
+
+    endGame(winner) {
+      if (this.gameOver) return;
+      this.gameOver = true;
+      this.stopTimers();
+      this.time.delayedCall(600, () => {
+        this.scene.start(winner === 'sam' ? 'VictoryScene' : 'LoseScene');
+      });
+    }
+
+    getBounds(obj) {
+      if (obj.getBounds) return obj.getBounds();
+      return new Phaser.Geom.Rectangle(
+        obj.x - obj.width / 2, obj.y - obj.height / 2,
+        obj.width, obj.height
+      );
+    }
+
+    update(_, delta) {
+      if (this.gameOver) return;
+      const dt = delta / 1000;
+      const HY = 36;
+      const samW = (this.sam.displayWidth || this.sam.width) / 2;
+      const samH = (this.sam.displayHeight || this.sam.height) / 2;
+      const stalW = (this.stalin.displayWidth || this.stalin.width) / 2;
+      const stalH = (this.stalin.displayHeight || this.stalin.height) / 2;
+
+      // ---- Sam movement ----
+      let svx = 0, svy = 0;
+      if (this.mode === '1player') {
+        if (this.cursors.left.isDown || this.touch.samLeft) svx = -SAM_SPEED;
+        else if (this.cursors.right.isDown || this.touch.samRight) svx = SAM_SPEED;
+        if (this.cursors.up.isDown || this.touch.samUp) svy = -SAM_SPEED;
+        else if (this.cursors.down.isDown || this.touch.samDown) svy = SAM_SPEED;
+        if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) this.doSamShoot();
+      } else {
+        if (this.wasd.left.isDown || this.touch.samLeft) svx = -SAM_SPEED;
+        else if (this.wasd.right.isDown || this.touch.samRight) svx = SAM_SPEED;
+        if (this.wasd.up.isDown || this.touch.samUp) svy = -SAM_SPEED;
+        else if (this.wasd.down.isDown || this.touch.samDown) svy = SAM_SPEED;
+        if (Phaser.Input.Keyboard.JustDown(this.capsKey)) this.doSamShoot();
+      }
+      this.sam.x = Phaser.Math.Clamp(this.sam.x + svx * dt, samW, W / 2 - samW);
+      this.sam.y = Phaser.Math.Clamp(this.sam.y + svy * dt, HY + samH, H - samH);
+
+      // ---- Stalin movement ----
+      if (this.mode === '2player') {
+        let tvx = 0, tvy = 0;
+        if (this.cursors.left.isDown || this.touch.stalLeft) tvx = -STALIN_SPEED;
+        else if (this.cursors.right.isDown || this.touch.stalRight) tvx = STALIN_SPEED;
+        if (this.cursors.up.isDown || this.touch.stalUp) tvy = -STALIN_SPEED;
+        else if (this.cursors.down.isDown || this.touch.stalDown) tvy = STALIN_SPEED;
+        if (Phaser.Input.Keyboard.JustDown(this.numpad0)) this.doStalinShoot();
+        this.stalin.x = Phaser.Math.Clamp(this.stalin.x + tvx * dt, W / 2 + stalW, W - stalW);
+        this.stalin.y = Phaser.Math.Clamp(this.stalin.y + tvy * dt, HY + stalH, H - stalH);
+      } else {
+        const nx = this.stalin.x + this.stalinVelX * dt;
+        const ny = this.stalin.y + this.stalinVelY * dt;
+        this.stalin.x = Phaser.Math.Clamp(nx, W / 2 + stalW, W - stalW);
+        this.stalin.y = Phaser.Math.Clamp(ny, HY + stalH, H - stalH);
+        if (this.stalin.x <= W / 2 + stalW || this.stalin.x >= W - stalW) this.stalinVelX = 0;
+        if (this.stalin.y <= HY + stalH || this.stalin.y >= H - stalH) this.stalinVelY = 0;
+      }
+
+      // ---- USA flag ----
+      if (this.usaActive) {
+        this.usaFlag.x += FLAG_SPEED * dt;
+        if (Phaser.Geom.Intersects.RectangleToRectangle(
+            this.getBounds(this.usaFlag), this.getBounds(this.stalin))) {
+          this.usaFlag.setVisible(false);
+          this.usaActive = false;
+          this.stalinHP -= DAMAGE;
+          this.refreshHUD();
+          if (this.stalinHP <= 0) { this.endGame('sam'); return; }
+        } else if (this.usaFlag.x > W + 60) {
+          this.usaFlag.setVisible(false);
+          this.usaActive = false;
+        }
+      }
+
+      // ---- USSR flag ----
+      if (this.ussrActive) {
+        this.ussrFlag.x -= FLAG_SPEED * dt;
+        if (Phaser.Geom.Intersects.RectangleToRectangle(
+            this.getBounds(this.ussrFlag), this.getBounds(this.sam))) {
+          this.ussrFlag.setVisible(false);
+          this.ussrActive = false;
+          this.samHP -= DAMAGE;
+          this.refreshHUD();
+          if (this.samHP <= 0) { this.endGame('stalin'); return; }
+          if (this.mode === '1player') {
+            this.ussrFlag.setPosition(this.stalin.x, this.stalin.y);
+          }
+        } else if (this.ussrFlag.x < -60) {
+          this.ussrFlag.setVisible(false);
+          this.ussrActive = false;
+          if (this.mode === '1player') {
+            this.ussrFlag.setPosition(this.stalin.x, this.stalin.y);
+          }
+        }
+      }
+    }
+  }
+
+  // ===================== VICTORY =====================
+  class VictoryScene extends Phaser.Scene {
+    constructor() { super({ key: 'VictoryScene' }); }
+    create() {
+      setState('scene', 'VictoryScene');
+      this.add.rectangle(W / 2, H / 2, W, H, 0x001833);
+
+      this.add.text(W / 2, 110, 'VICTORY!', {
+        fontFamily: 'Impact, Arial Black, sans-serif',
+        fontSize: '68px', color: '#FFD700',
+        stroke: '#ffffff', strokeThickness: 3
+      }).setOrigin(0.5);
+
+      this.add.text(W / 2, 200, 'CONGRATULATIONS!', {
+        fontFamily: 'Arial Black, sans-serif',
+        fontSize: '26px', color: '#ffffff'
+      }).setOrigin(0.5);
+
+      [
+        'You have defeated the communist invasion',
+        "and ended the evil Stalin's life!"
+      ].forEach((t, i) => {
+        this.add.text(W / 2, 250 + i * 30, t, {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '18px', color: '#aaddff'
+        }).setOrigin(0.5);
+      });
+
+      [
+        ['Play Again', W / 2 - 110, 0x003399],
+        ['Main Menu', W / 2 + 110, 0x335533]
+      ].forEach(([label, x, color]) => {
+        const b = this.add.rectangle(x, 395, 185, 46, color)
+          .setInteractive({ useHandCursor: true });
+        this.add.text(x, 395, label, {
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '16px', color: '#ffffff', fontStyle: 'bold'
+        }).setOrigin(0.5);
+        b.on('pointerdown', () => this.scene.start('MenuScene'));
+      });
+    }
+  }
+
+  // ===================== LOSE =====================
+  class LoseScene extends Phaser.Scene {
+    constructor() { super({ key: 'LoseScene' }); }
+    create() {
+      setState('scene', 'LoseScene');
+      this.add.rectangle(W / 2, H / 2, W, H, 0x330000);
+
+      this.add.text(W / 2, 110, 'DEFEAT!', {
+        fontFamily: 'Impact, Arial Black, sans-serif',
+        fontSize: '68px', color: '#FF2222',
+        stroke: '#000000', strokeThickness: 3
+      }).setOrigin(0.5);
+
+      this.add.text(W / 2, 205, 'The communists have won...', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '22px', color: '#cccccc'
+      }).setOrigin(0.5);
+
+      this.add.text(W / 2, 245, 'America has been doomed!', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '18px', color: '#ff8888'
+      }).setOrigin(0.5);
+
+      const b = this.add.rectangle(W / 2, 395, 185, 46, 0x880000)
+        .setInteractive({ useHandCursor: true });
+      this.add.text(W / 2, 395, 'Try Again', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '16px', color: '#ffffff', fontStyle: 'bold'
+      }).setOrigin(0.5);
+      b.on('pointerdown', () => this.scene.start('MenuScene'));
+    }
+  }
+
+  // ===================== BOOT =====================
+  const config = {
+    type: Phaser.AUTO,
+    backgroundColor: '#000000',
+    parent: 'game-container',
+    scene: [MenuScene, GameScene, VictoryScene, LoseScene],
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: W,
+      height: H
+    },
+    input: {
+      mouse: { target: null },
+      touch: { target: null }
+    }
+  };
+
+  window.game = new Phaser.Game(config);
+  </script>
+</body>
+</html>

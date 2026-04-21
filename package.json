@@ -1,0 +1,14 @@
+{
+  "name": "nmonti-github-io",
+  "version": "1.0.0",
+  "private": true,
+  "description": "nmonti.github.io — personal site with Sam vs Stalin game",
+  "scripts": {
+    "test": "playwright test",
+    "test:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "serve": "^14.2.3"
+  }
+}

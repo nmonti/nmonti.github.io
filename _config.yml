@@ -22,3 +22,8 @@ exclude:
   - Gemfile.lock
   - node_modules
   - vendor
+  - package.json
+  - package-lock.json
+  - playwright.config.js
+  - tests
+  - playwright-report
