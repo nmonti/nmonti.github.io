@@ -1,0 +1,91 @@
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 16px;
+  background: #fff;
+  color: #222;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 24px 0 4px;
+}
+
+p.note {
+  margin: 0 0 12px;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.map svg {
+  width: 100%;
+  height: auto;
+  max-width: 975px;
+  display: block;
+}
+
+.county {
+  stroke: #fff;
+  stroke-width: 0.25;
+}
+
+.county:hover {
+  stroke: #000;
+  stroke-width: 1;
+}
+
+.county-outline {
+  fill: #f2f2f2;
+  stroke: #ccc;
+  stroke-width: 0.25;
+}
+
+.county-outline:hover {
+  fill: #ddd;
+  stroke: #000;
+  stroke-width: 1;
+}
+
+.county-scaled {
+  fill: #3b6fb6;
+  pointer-events: none;
+}
+
+.county-over {
+  fill: #3b6fb6;
+  fill-opacity: 0.85;
+}
+
+.county-under {
+  fill: #e08a2c;
+  fill-opacity: 0.85;
+}
+
+/* Unfilled, but pointer-events: all lets the whole county area catch the hover. */
+.county-border {
+  fill: none;
+  stroke: #999;
+  stroke-width: 0.25;
+  pointer-events: all;
+}
+
+.county-border:hover {
+  stroke: #000;
+  stroke-width: 1;
+}
+
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  opacity: 0;
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>US County Heatmap</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>US County Heatmap</h1>
+  <p class="note" id="source"></p>
+  <div id="map" class="map"></div>
+
+  <h2>Scaled by size</h2>
+  <p class="note">Each blue shape is its county shrunk around its center; its area is proportional to the value. Grey outlines show full size.</p>
+  <div id="size-map" class="map"></div>
+
+  <h2>Scaled around 50</h2>
+  <p class="note">A value of 50 draws the county at normal size. Above 50 (blue) it grows, below 50 (orange) it shrinks; area is proportional to value &divide; 50. Grey lines show true borders.</p>
+  <div id="pivot-map" class="map"></div>
+  <div id="tooltip"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="./d3.js"></script>
+</body>
+</html>
